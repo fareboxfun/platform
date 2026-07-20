@@ -1,0 +1,722 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Farebox — LLM gateway with crypto-native metered billing
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication (wallet signature + session)
+  - name: keys
+    description: API key management
+  - name: balance
+    description: Credit balance and ledger
+  - name: usage
+    description: Usage events and analytics
+  - name: models
+    description: Available AI models
+  - name: dashboard
+    description: Dashboard summary endpoints
+  - name: payments
+    description: Top-up payments
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/nonce:
+    get:
+      operationId: getAuthNonce
+      tags: [auth]
+      summary: Get a sign-in nonce
+      description: Returns a single-use nonce for wallet signature-based login
+      responses:
+        "200":
+          description: Nonce issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthNonce"
+
+  /auth/verify:
+    post:
+      operationId: verifyAuth
+      tags: [auth]
+      summary: Verify wallet signature and create session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthVerifyInput"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Invalid signature
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out and invalidate session
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+
+  /keys:
+    get:
+      operationId: listApiKeys
+      tags: [keys]
+      summary: List API keys for current user
+      responses:
+        "200":
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
+    post:
+      operationId: createApiKey
+      tags: [keys]
+      summary: Create a new API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiKeyInput"
+      responses:
+        "201":
+          description: Created API key (raw value shown once)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyCreated"
+
+  /keys/{id}:
+    delete:
+      operationId: revokeApiKey
+      tags: [keys]
+      summary: Revoke an API key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Key revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Key not found
+    patch:
+      operationId: updateApiKey
+      tags: [keys]
+      summary: Update API key label or caps
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiKeyUpdate"
+      responses:
+        "200":
+          description: Updated key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKey"
+
+  /balance:
+    get:
+      operationId: getBalance
+      tags: [balance]
+      summary: Get current credit balance
+      responses:
+        "200":
+          description: Current balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Balance"
+
+  /balance/ledger:
+    get:
+      operationId: getLedger
+      tags: [balance]
+      summary: Get ledger transaction history
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Ledger entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerPage"
+
+  /usage:
+    get:
+      operationId: getUsage
+      tags: [usage]
+      summary: Get usage events (paginated)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: model
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Usage events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsagePage"
+
+  /usage/by-model:
+    get:
+      operationId: getUsageByModel
+      tags: [usage]
+      summary: Get aggregated usage grouped by model
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: Usage aggregated by model
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UsageByModel"
+
+  /usage/daily:
+    get:
+      operationId: getUsageDaily
+      tags: [usage]
+      summary: Get daily usage totals for chart
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: Daily usage buckets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyUsage"
+
+  /models:
+    get:
+      operationId: listModels
+      tags: [models]
+      summary: List available AI models with pricing
+      responses:
+        "200":
+          description: Available models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Model"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: List payment history
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+
+  /payments/topup:
+    post:
+      operationId: createTopup
+      tags: [payments]
+      summary: Initiate a USDC top-up deposit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopupInput"
+      responses:
+        "201":
+          description: Top-up initiated with deposit address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopupResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    AuthNonce:
+      type: object
+      required: [nonce, expiresAt]
+      properties:
+        nonce:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+
+    AuthVerifyInput:
+      type: object
+      required: [walletAddress, signature, nonce]
+      properties:
+        walletAddress:
+          type: string
+        signature:
+          type: string
+        nonce:
+          type: string
+        message:
+          type: string
+
+    AuthSession:
+      type: object
+      required: [user, isNew]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        isNew:
+          type: boolean
+
+    User:
+      type: object
+      required: [id, walletAddress, createdAt]
+      properties:
+        id:
+          type: string
+        walletAddress:
+          type: string
+        email:
+          type: ["string", "null"]
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiKey:
+      type: object
+      required: [id, label, prefix, status, createdAt]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        prefix:
+          type: string
+        status:
+          type: string
+        dailyCapUsd:
+          type: ["number", "null"]
+        monthlyCapUsd:
+          type: ["number", "null"]
+        rateLimitRpm:
+          type: ["integer", "null"]
+        allowedModels:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    ApiKeyInput:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+        dailyCapUsd:
+          type: ["number", "null"]
+        monthlyCapUsd:
+          type: ["number", "null"]
+        rateLimitRpm:
+          type: ["integer", "null"]
+        allowedModels:
+          type: array
+          items:
+            type: string
+
+    ApiKeyCreated:
+      type: object
+      required: [apiKey, rawKey]
+      properties:
+        apiKey:
+          $ref: "#/components/schemas/ApiKey"
+        rawKey:
+          type: string
+          description: Full key value, shown only once
+
+    ApiKeyUpdate:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+        dailyCapUsd:
+          type: ["number", "null"]
+        monthlyCapUsd:
+          type: ["number", "null"]
+        rateLimitRpm:
+          type: ["integer", "null"]
+
+    Balance:
+      type: object
+      required: [balanceUsd, totalTopupUsd, totalSpentUsd]
+      properties:
+        balanceUsd:
+          type: number
+        totalTopupUsd:
+          type: number
+        totalSpentUsd:
+          type: number
+        lastUpdated:
+          type: string
+          format: date-time
+
+    LedgerEntry:
+      type: object
+      required: [id, type, amountUsd, balanceAfter, createdAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [topup, debit, refund, adjustment]
+        amountUsd:
+          type: number
+        description:
+          type: ["string", "null"]
+        refId:
+          type: ["string", "null"]
+        balanceAfter:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    LedgerPage:
+      type: object
+      required: [entries, total]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LedgerEntry"
+        total:
+          type: integer
+
+    UsageEvent:
+      type: object
+      required: [id, model, provider, inputTokens, outputTokens, billedUsd, status, createdAt]
+      properties:
+        id:
+          type: string
+        model:
+          type: string
+        provider:
+          type: string
+        apiKeyId:
+          type: ["string", "null"]
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        cachedTokens:
+          type: integer
+        providerCostUsd:
+          type: number
+        billedUsd:
+          type: number
+        marginUsd:
+          type: number
+        latencyMs:
+          type: ["integer", "null"]
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    UsagePage:
+      type: object
+      required: [events, total]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/UsageEvent"
+        total:
+          type: integer
+
+    UsageByModel:
+      type: object
+      required: [model, provider, requestCount, totalInputTokens, totalOutputTokens, totalBilledUsd]
+      properties:
+        model:
+          type: string
+        provider:
+          type: string
+        requestCount:
+          type: integer
+        totalInputTokens:
+          type: integer
+        totalOutputTokens:
+          type: integer
+        totalBilledUsd:
+          type: number
+
+    DailyUsage:
+      type: object
+      required: [date, requestCount, totalBilledUsd, totalTokens]
+      properties:
+        date:
+          type: string
+          format: date
+        requestCount:
+          type: integer
+        totalBilledUsd:
+          type: number
+        totalTokens:
+          type: integer
+
+    Model:
+      type: object
+      required: [id, name, provider, inputPerMtokUsd, outputPerMtokUsd, billedInputPerMtokUsd, billedOutputPerMtokUsd]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        provider:
+          type: string
+        description:
+          type: ["string", "null"]
+        contextWindow:
+          type: ["integer", "null"]
+        inputPerMtokUsd:
+          type: number
+        outputPerMtokUsd:
+          type: number
+        billedInputPerMtokUsd:
+          type: number
+        billedOutputPerMtokUsd:
+          type: number
+        markupPct:
+          type: number
+        supportsStreaming:
+          type: boolean
+        supportsTools:
+          type: boolean
+
+    DashboardSummary:
+      type: object
+      required: [balanceUsd, totalRequestsToday, totalSpentToday, totalRequestsMonth, totalSpentMonth, activeKeyCount, topModelToday]
+      properties:
+        balanceUsd:
+          type: number
+        totalRequestsToday:
+          type: integer
+        totalSpentToday:
+          type: number
+        totalRequestsMonth:
+          type: integer
+        totalSpentMonth:
+          type: number
+        activeKeyCount:
+          type: integer
+        topModelToday:
+          type: ["string", "null"]
+        avgCostPerRequest:
+          type: number
+
+    Payment:
+      type: object
+      required: [id, method, amountUsdc, amountUsd, status, createdAt]
+      properties:
+        id:
+          type: string
+        method:
+          type: string
+          enum: [usdc_topup, x402]
+        amountUsdc:
+          type: number
+        amountUsd:
+          type: number
+        chain:
+          type: ["string", "null"]
+        txSignature:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, confirmed, failed]
+        createdAt:
+          type: string
+          format: date-time
+
+    TopupInput:
+      type: object
+      required: [amountUsdc]
+      properties:
+        amountUsdc:
+          type: number
+          minimum: 1
+
+    TopupResponse:
+      type: object
+      required: [payment, depositAddress, memo, expiresAt]
+      properties:
+        payment:
+          $ref: "#/components/schemas/Payment"
+        depositAddress:
+          type: string
+        memo:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        solanaPay:
+          type: ["string", "null"]
+          description: Solana Pay URL for QR code

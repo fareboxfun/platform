@@ -1,0 +1,44 @@
+{
+  "name": "farebox-mcp",
+  "version": "1.0.6",
+  "description": "Farebox MCP Server — connect Claude Desktop, Cursor, or any MCP client to all 36+ frontier LLMs via Farebox. Pay per token in USDC.",
+  "main": "./dist/farebox-mcp",
+  "bin": {
+    "farebox-mcp": "dist/farebox-mcp"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node dist/farebox-mcp",
+    "dev": "npx tsx src/index.ts",
+    "prepublishOnly": "node build.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "llm",
+    "ai",
+    "farebox",
+    "claude",
+    "cursor",
+    "usdc",
+    "solana",
+    "x402"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fareboxfun/farebox-mcp.git"
+  },
+  "homepage": "https://farebox.fun",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.0.0"
+  }
+}
