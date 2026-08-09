@@ -63,7 +63,7 @@ const CRUMBS: Record<string, string[]> = {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { ready, authenticated, login, logout, walletShort, walletAddress } = useWalletAuth();
+  const { ready, authenticated, login, logout, walletShort, walletAddress, solBalance, usdcBalance } = useWalletAuth();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const crumbs = CRUMBS[location] ?? ['Console'];
@@ -172,6 +172,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
                 <div className="font-mono text-[10px] truncate font-bold" style={{ color: '#1A1A1A' }}>
                   {walletShort ?? walletAddress ?? '—'}
+                </div>
+                {/* On-chain balances */}
+                <div className="mt-1.5 space-y-0.5">
+                  <div className="flex justify-between text-[9px]">
+                    <span style={{ color: '#1A1A1A50', fontWeight: 700 }}>SOL</span>
+                    <span className="font-mono font-bold" style={{ color: '#1A1A1A' }}>
+                      {solBalance === null ? '…' : solBalance.toFixed(4)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[9px]">
+                    <span style={{ color: '#1A1A1A50', fontWeight: 700 }}>USDC</span>
+                    <span className="font-mono font-bold" style={{ color: '#1A1A1A' }}>
+                      {usdcBalance === null ? '…' : usdcBalance.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
               <button

@@ -6,9 +6,13 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 const API_BASE = 'https://api.farebox.fun';
+
+// USDC mint on Solana mainnet
+const USDC_MINT = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 
 interface WalletAuthCtx {
   ready: boolean;
@@ -19,6 +23,10 @@ interface WalletAuthCtx {
   logout: () => Promise<void>;
   walletAddress: string | null;
   walletShort: string | null;
+  /** On-chain SOL balance (e.g. 0.5) — null if not fetched yet */
+  solBalance: number | null;
+  /** On-chain USDC balance — null if not fetched yet */
+  usdcBalance: number | null;
 }
 
 const Ctx = createContext<WalletAuthCtx | null>(null);
@@ -27,11 +35,26 @@ const ModalCtx = createContext<{ open: boolean; setOpen: (v: boolean) => void } 
 /* ── Wallet Selector Modal ───────────────────────────────────────────────── */
 function WalletSelector() {
   const modal = useContext(ModalCtx);
-  const { wallets, select, connecting } = useWallet();
+  // Get connect so we can call it after select
+  const { wallets, select, connect, connecting } = useWallet();
   if (!modal?.open) return null;
 
-  const detected = wallets.filter((w) => w.readyState === 'Installed' || w.readyState === 'Loadable');
+  const detected = wallets.filter(
+    (w) => w.readyState === 'Installed' || w.readyState === 'Loadable',
+  );
   const list = detected.length > 0 ? detected : wallets;
+
+  const handleSelect = (walletName: string) => {
+    select(walletName as any);
+    modal.setOpen(false);
+    // connect() must be called after select() has set the adapter.
+    // A single microtask tick is enough for the state to propagate.
+    setTimeout(() => {
+      connect().catch((err) =>
+        console.warn('[farebox] connect popup error:', err),
+      );
+    }, 0);
+  };
 
   return (
     <div
@@ -59,7 +82,13 @@ function WalletSelector() {
           </div>
         </div>
 
-        {list.length === 0 ? (
+        {connecting && (
+          <div style={{ textAlign: 'center', padding: '16px 0', fontSize: 13, color: '#7C3AED', fontWeight: 700 }}>
+            Connecting…
+          </div>
+        )}
+
+        {!connecting && list.length === 0 && (
           <div style={{ textAlign: 'center', padding: '24px 0', color: '#1A1A1A60', fontSize: 13 }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>👛</div>
             No Solana wallets detected.<br />
@@ -71,13 +100,14 @@ function WalletSelector() {
               style={{ color: '#7C3AED', fontWeight: 700 }}>Solflare</a>
             {' '}to continue.
           </div>
-        ) : (
+        )}
+
+        {!connecting && list.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {list.map((w) => (
               <button
                 key={w.adapter.name}
-                disabled={connecting}
-                onClick={() => { select(w.adapter.name); modal.setOpen(false); }}
+                onClick={() => handleSelect(w.adapter.name)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 14,
                   width: '100%', padding: '13px 16px',
@@ -137,7 +167,7 @@ function WalletSelector() {
   );
 }
 
-/* ── Inner provider (must be inside WalletProvider) ─────────────────────── */
+/* ── Inner provider (must be inside ConnectionProvider + WalletProvider) ─── */
 function WalletAuthInner({
   children,
   openModal,
@@ -145,9 +175,15 @@ function WalletAuthInner({
   children: React.ReactNode;
   openModal: () => void;
 }) {
-  const { connected, publicKey, signMessage, disconnect, connecting } = useWallet();
+  const { connection } = useConnection();
+  const {
+    connected, publicKey, signMessage, disconnect, connecting,
+  } = useWallet();
+
   const [serverAuthenticated, setServerAuthenticated] = useState(false);
   const [serverLoading, setServerLoading] = useState(false);
+  const [solBalance, setSolBalance] = useState<number | null>(null);
+  const [usdcBalance, setUsdcBalance] = useState<number | null>(null);
   const syncedRef = useRef(false);
 
   const walletAddress = publicKey?.toString() ?? null;
@@ -157,6 +193,56 @@ function WalletAuthInner({
   const ready = !connecting;
   const authenticated = connected && !!walletAddress;
 
+  /* ── On-chain balance fetch ────────────────────────────────────────────── */
+  useEffect(() => {
+    if (!publicKey || !connection) {
+      setSolBalance(null);
+      setUsdcBalance(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchBalances = async () => {
+      try {
+        // SOL balance
+        const lamports = await connection.getBalance(publicKey);
+        if (!cancelled) setSolBalance(lamports / LAMPORTS_PER_SOL);
+      } catch {
+        if (!cancelled) setSolBalance(0);
+      }
+
+      try {
+        // USDC balance — find associated token account
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          { mint: USDC_MINT },
+        );
+        if (!cancelled) {
+          if (tokenAccounts.value.length > 0) {
+            const amount =
+              tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+            setUsdcBalance(amount ?? 0);
+          } else {
+            setUsdcBalance(0);
+          }
+        }
+      } catch {
+        if (!cancelled) setUsdcBalance(0);
+      }
+    };
+
+    fetchBalances();
+
+    // Refresh every 30 seconds while connected
+    const interval = setInterval(fetchBalances, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [publicKey?.toString(), connection]);
+
+  /* ── Server session ────────────────────────────────────────────────────── */
   const checkServerSession = useCallback(async (): Promise<boolean> => {
     try {
       const r = await fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' });
@@ -189,7 +275,7 @@ function WalletAuthInner({
           const sigBytes = await signMessage(msgBytes);
           signature = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
         } catch (e) {
-          console.warn('[farebox] wallet signing failed, using stub sig:', e);
+          console.warn('[farebox] signing failed, using stub:', e);
         }
       }
 
@@ -231,6 +317,8 @@ function WalletAuthInner({
     } catch {}
     setServerAuthenticated(false);
     syncedRef.current = false;
+    setSolBalance(null);
+    setUsdcBalance(null);
     await disconnect();
   }, [disconnect]);
 
@@ -244,6 +332,8 @@ function WalletAuthInner({
       logout: handleLogout,
       walletAddress,
       walletShort,
+      solBalance,
+      usdcBalance,
     }}>
       {children}
     </Ctx.Provider>
@@ -270,4 +360,3 @@ export function useWalletAuth(): WalletAuthCtx {
   if (!ctx) throw new Error('useWalletAuth must be used inside WalletAuthProvider');
   return ctx;
 }
-
