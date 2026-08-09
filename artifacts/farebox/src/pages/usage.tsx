@@ -23,15 +23,6 @@ const fmtShort = (n: number) => {
   return String(n);
 };
 
-/* ── empty-state placeholder models ──────────── */
-const PLACEHOLDER_MODELS = [
-  { id: 'claude-sonnet-4-5', provider: 'Anthropic' },
-  { id: 'gpt-4o',            provider: 'OpenAI'    },
-  { id: 'gemini-2-5-flash',  provider: 'Google'    },
-  { id: 'grok-3',            provider: 'xAI'       },
-  { id: 'llama-3-3-70b',     provider: 'Groq'      },
-  { id: 'deepseek-r1',       provider: 'DeepInfra' },
-];
 
 export default function Usage() {
   const [days, setDays] = React.useState<7 | 30 | 90>(30);
@@ -196,21 +187,15 @@ export default function Usage() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              /* empty-state — show greyed bars for visual shape */
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={PLACEHOLDER_MODELS.map((m, i) => ({
-                    model: m.id,
-                    totalTokens: [40, 80, 55, 90, 35, 70][i],
-                  }))}
-                  barSize={28}
-                  margin={{ top: 4, right: 4, left: 0, bottom: 4 }}
-                >
-                  <XAxis dataKey="model" axisLine={false} tickLine={false} tick={false} />
-                  <YAxis hide />
-                  <Bar dataKey="totalTokens" radius={[4, 4, 0, 0]} fill="rgba(26,26,26,0.08)" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div
+                className="h-full flex flex-col items-center justify-center gap-2"
+                style={{ border: '2px dashed rgba(26,26,26,0.15)', borderRadius: 8 }}
+              >
+                <span style={{ fontSize: 28, opacity: 0.3 }}>📊</span>
+                <span className="font-mono text-black/25 uppercase tracking-widest" style={{ fontSize: 10 }}>
+                  No usage data yet
+                </span>
+              </div>
             )}
           </div>
 
@@ -236,21 +221,11 @@ export default function Usage() {
                     </div>
                   );
                 })
-              : PLACEHOLDER_MODELS.map(m => (
-                  <div key={m.id} className="flex items-center gap-1.5">
-                    <span
-                      style={{
-                        width: 10, height: 10, borderRadius: '50%',
-                        background: (PC[m.provider] ?? COL_DEFAULT) + '35',
-                        display: 'inline-block',
-                        border: '1.5px solid rgba(26,26,26,0.2)',
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span className="font-mono text-black/20" style={{ fontSize: 10 }}>{m.id}</span>
-                    <span className="font-mono font-bold text-black/15" style={{ fontSize: 10 }}>0%</span>
-                  </div>
-                ))}
+              : (
+                  <span className="font-mono text-black/25 uppercase tracking-widest" style={{ fontSize: 10 }}>
+                    No usage recorded yet
+                  </span>
+                )
           </div>
         </div>
       </div>

@@ -208,8 +208,9 @@ function WalletAuthInner({
         // SOL balance
         const lamports = await connection.getBalance(publicKey);
         if (!cancelled) setSolBalance(lamports / LAMPORTS_PER_SOL);
-      } catch {
-        if (!cancelled) setSolBalance(0);
+      } catch (e) {
+        console.warn('[farebox] SOL balance fetch failed:', e);
+        // Leave as null — UI shows "—" rather than a misleading "0.0000"
       }
 
       try {
@@ -224,11 +225,13 @@ function WalletAuthInner({
               tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
             setUsdcBalance(amount ?? 0);
           } else {
+            // No token account = wallet has never held USDC, balance is truly 0
             setUsdcBalance(0);
           }
         }
-      } catch {
-        if (!cancelled) setUsdcBalance(0);
+      } catch (e) {
+        console.warn('[farebox] USDC balance fetch failed:', e);
+        // Leave as null — UI shows "—" rather than a misleading "0.00"
       }
     };
 
@@ -268,15 +271,24 @@ function WalletAuthInner({
         `Sign in to Farebox\n\n` +
         `Nonce: ${nonce}\nIssued At: ${issuedAt}`;
 
-      let signature = `stub-${nonce.slice(0, 16)}`;
-      if (signMessage) {
-        try {
-          const msgBytes = new TextEncoder().encode(message);
-          const sigBytes = await signMessage(msgBytes);
-          signature = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
-        } catch (e) {
-          console.warn('[farebox] signing failed, using stub:', e);
-        }
+      if (!signMessage) {
+        console.warn('[farebox] signMessage not available on this wallet — cannot authenticate');
+        syncedRef.current = false;
+        setServerLoading(false);
+        return;
+      }
+
+      let signature: string;
+      try {
+        const msgBytes = new TextEncoder().encode(message);
+        const sigBytes = await signMessage(msgBytes);
+        signature = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
+      } catch (e) {
+        console.warn('[farebox] user rejected or signing failed:', e);
+        // Reset so the user can try again
+        syncedRef.current = false;
+        setServerLoading(false);
+        return;
       }
 
       const verifyRes = await fetch(`${API_BASE}/api/auth/verify`, {
