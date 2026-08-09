@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { usePrivyAuth } from '../lib/privy';
+import { useWalletAuth as usePrivyAuth } from '../lib/wallet';
 import { Logo } from './logo';
 
 const NAV = [

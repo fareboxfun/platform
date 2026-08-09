@@ -4,7 +4,7 @@ import { ArrowRight, ChevronRight, Twitter, Github, Send, BookOpen, Copy, Check 
 import { TopNav } from '../components/top-nav';
 import { Logo } from '../components/logo';
 import { Footer } from '../components/footer';
-import { usePrivyAuth } from '../lib/privy';
+import { useWalletAuth as usePrivyAuth } from '../lib/wallet';
 import { useQuery } from '@tanstack/react-query';
 
 /* ── platform metrics hook (public endpoint) ── */
@@ -536,7 +536,7 @@ export default function Landing() {
                   </div>
 
                   <div className="flex flex-wrap gap-3 items-center">
-                    {/* Primary — Privy connect */}
+                    {/* Primary — wallet connect */}
                     {authenticated ? (
                       <Link href="/dashboard" className="nb-btn nb-btn-primary">
                         <span className="w-2 h-2 rounded-full bg-[#6BCB77] inline-block" />

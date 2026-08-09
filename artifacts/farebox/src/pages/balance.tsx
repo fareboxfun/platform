@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useGetBalance, useGetLedger, useCreateTopup, getGetBalanceQueryKey, getGetLedgerQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Copy, Check, ArrowUpRight, ArrowDownRight, Wallet, ExternalLink, RefreshCw } from 'lucide-react';
-import { usePrivyAuth } from '../lib/privy';
+import { useWalletAuth as usePrivyAuth } from '../lib/wallet';
 
 /* ── helpers ─────────────────────────────── */
 const USDC_PRESETS = [5, 20, 50, 100, 250, 500];

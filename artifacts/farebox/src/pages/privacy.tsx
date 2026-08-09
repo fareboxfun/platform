@@ -65,7 +65,7 @@ export default function PrivacyPage() {
             <P>When you make a model request, the prompt and any context you include is sent to the upstream provider (OpenAI, Anthropic, Google, etc.) for inference. Each provider has its own privacy policy. Farebox acts as a routing proxy and does not retain prompt content — only token counts and metadata.</P>
 
             <H3>5. Cookies & Tracking</H3>
-            <P>The farebox.fun web app uses a minimal session cookie to maintain your login state (wallet connection via Privy). We do not use third-party advertising or analytics cookies. We do not use Google Analytics or similar services.</P>
+            <P>The farebox.fun web app uses a minimal session cookie to maintain your login state (wallet connection via Solana Wallet Adapter). We do not use third-party advertising or analytics cookies. We do not use Google Analytics or similar services.</P>
 
             <H3>6. Security</H3>
             <P>We apply industry-standard security practices including TLS encryption, hashed API key storage, and append-only financial records. See our <a href="/security" className="underline" style={{ color: PURPLE }}>Security page</a> for details.</P>

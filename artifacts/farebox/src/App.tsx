@@ -2,8 +2,8 @@ import { Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { PrivyProvider } from '@privy-io/react-auth';
-import { PrivyAuthProvider } from './lib/privy';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { WalletAuthProvider } from './lib/wallet';
 import { useEffect } from 'react';
 
 import Landing from './pages/landing';
@@ -30,6 +30,9 @@ import TermsPage from './pages/terms';
 import NotFound from './pages/not-found';
 
 const queryClient = new QueryClient();
+
+// Solana mainnet RPC endpoint
+const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
 
 /** Redirect stats.farebox.fun → /status automatically */
 function SubdomainGate() {
@@ -96,35 +99,22 @@ function AppRoutes() {
 
 function App() {
   return (
-    <PrivyProvider
-      appId="cmrrszjm4002d0cl2lgerfdms"
-      config={{
-        loginMethods: ['wallet'],
-        // Restrict to Solana wallets only — no MetaMask / EVM wallets
-        walletChainType: 'solana-only',
-        appearance: {
-          accentColor: '#7C3AED',
-          theme: 'light',
-          logo: '/logo.png',
-          showWalletLoginFirst: true,
-          walletList: ['phantom', 'backpack', 'solflare'],
-        },
-        embeddedWallets: {
-          createOnLogin: 'off',
-        },
-      }}
-    >
-      <PrivyAuthProvider>
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-              <AppRoutes />
-            </WouterRouter>
-            <Toaster />
-          </TooltipProvider>
-        </QueryClientProvider>
-      </PrivyAuthProvider>
-    </PrivyProvider>
+    // wallets={[]} → auto-detects all Wallet Standard wallets in browser
+    // (Phantom, Solflare, Backpack, Bitget, etc.)
+    <ConnectionProvider endpoint={SOLANA_RPC}>
+      <WalletProvider wallets={[]} autoConnect={false}>
+        <WalletAuthProvider>
+          <QueryClientProvider client={queryClient}>
+            <TooltipProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+                <AppRoutes />
+              </WouterRouter>
+              <Toaster />
+            </TooltipProvider>
+          </QueryClientProvider>
+        </WalletAuthProvider>
+      </WalletProvider>
+    </ConnectionProvider>
   );
 }
 
