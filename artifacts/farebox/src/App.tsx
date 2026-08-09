@@ -31,8 +31,8 @@ import NotFound from './pages/not-found';
 
 const queryClient = new QueryClient();
 
-// Solana mainnet RPC endpoint
-const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
+// Solana mainnet RPC — Ankr public endpoint (higher rate limits, no API key needed)
+const SOLANA_RPC = 'https://rpc.ankr.com/solana';
 
 /** Redirect stats.farebox.fun → /status automatically */
 function SubdomainGate() {
