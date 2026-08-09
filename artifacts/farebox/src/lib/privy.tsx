@@ -30,16 +30,41 @@ export function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
   const [serverLoading, setServerLoading] = useState(false);
   const syncedRef = useRef(false);
 
+  // Debug: log wallet details to understand Privy v3 wallet object shape
+  React.useEffect(() => {
+    if (wallets.length > 0) {
+      console.log('[farebox] wallets:', wallets.map((w) => ({
+        address: w.address,
+        walletClientType: (w as any).walletClientType,
+        chainType: (w as any).chainType,
+        chain: (w as any).chain,
+        type: (w as any).type,
+      })));
+    }
+  }, [wallets]);
+
   // Only accept Solana wallets — never fall back to an EVM wallet
+  // Guard 1: known Solana wallet clients or chainType
+  // Guard 2: address must NOT start with 0x (EVM address format)
   const solanaWallet = wallets.find(
     (w) =>
-      (w as any).chainType === 'solana' ||
-      (w as any).chain === 'solana' ||
-      (w as any).walletClientType === 'phantom' ||
-      (w as any).walletClientType === 'backpack' ||
-      (w as any).walletClientType === 'solflare',
+      !w.address.startsWith('0x') && (
+        (w as any).chainType === 'solana' ||
+        (w as any).chain === 'solana' ||
+        (w as any).walletClientType === 'phantom' ||
+        (w as any).walletClientType === 'backpack' ||
+        (w as any).walletClientType === 'solflare' ||
+        (w as any).type === 'solana'
+      ),
   );
-  const primaryWallet = solanaWallet ?? null;
+
+  // Fallback: if ANY non-0x wallet exists and no typed Solana wallet found,
+  // pick the first non-EVM address (handles Privy v3 schema variations)
+  const fallbackSolanaWallet = !solanaWallet
+    ? wallets.find((w) => !w.address.startsWith('0x'))
+    : null;
+
+  const primaryWallet = solanaWallet ?? fallbackSolanaWallet ?? null;
   const walletAddress = primaryWallet?.address ?? null;
   const walletShort = walletAddress
     ? `${walletAddress.slice(0, 4)}…${walletAddress.slice(-4)}`
