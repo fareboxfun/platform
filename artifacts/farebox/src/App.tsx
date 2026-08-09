@@ -100,11 +100,14 @@ function App() {
       appId="cmrrszjm4002d0cl2lgerfdms"
       config={{
         loginMethods: ['wallet'],
+        // Restrict to Solana wallets only — no MetaMask / EVM wallets
+        walletChainType: 'solana-only',
         appearance: {
           accentColor: '#7C3AED',
           theme: 'light',
           logo: '/logo.png',
           showWalletLoginFirst: true,
+          walletList: ['phantom', 'backpack', 'solflare'],
         },
         embeddedWallets: {
           createOnLogin: 'off',

@@ -30,11 +30,17 @@ export function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
   const [serverLoading, setServerLoading] = useState(false);
   const syncedRef = useRef(false);
 
+  // Only accept Solana wallets — never fall back to an EVM wallet
   const solanaWallet = wallets.find(
-    (w) => (w as any).chainType === 'solana' || (w as any).chain === 'solana',
+    (w) =>
+      (w as any).chainType === 'solana' ||
+      (w as any).chain === 'solana' ||
+      (w as any).walletClientType === 'phantom' ||
+      (w as any).walletClientType === 'backpack' ||
+      (w as any).walletClientType === 'solflare',
   );
-  const primaryWallet = solanaWallet ?? wallets[0] ?? null;
-  const walletAddress = primaryWallet?.address ?? user?.wallet?.address ?? null;
+  const primaryWallet = solanaWallet ?? null;
+  const walletAddress = primaryWallet?.address ?? null;
   const walletShort = walletAddress
     ? `${walletAddress.slice(0, 4)}…${walletAddress.slice(-4)}`
     : null;
