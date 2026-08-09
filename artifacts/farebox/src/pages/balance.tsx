@@ -2,7 +2,7 @@ import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useGetBalance, useGetLedger, useCreateTopup, getGetBalanceQueryKey, getGetLedgerQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Copy, Check, ArrowUpRight, ArrowDownRight, Wallet, ExternalLink, RefreshCw } from 'lucide-react';
+import { Copy, Check, ArrowUpRight, ArrowDownRight, Wallet, ExternalLink, RefreshCw, Search } from 'lucide-react';
 import { useWalletAuth } from '../lib/wallet';
 
 /* ── helpers ─────────────────────────────── */
@@ -460,7 +460,7 @@ export default function Balance() {
                 style={{ background: '#FFFBEF', borderBottom: '2px solid #1A1A1A' }}
               >
                 <tr>
-                  {['Type', 'Date', 'Description', 'Amount (USDC)', 'Balance After'].map(h => (
+                  {['Type', 'Date', 'Description', 'Amount (USDC)', 'Balance After', 'Tx'].map(h => (
                     <th
                       key={h}
                       className="px-5 py-3 font-bold uppercase tracking-widest text-black/40"
@@ -524,6 +524,38 @@ export default function Balance() {
                       <td className="px-5 py-3 text-black/40">
                         {fmtUsdc(e.balanceAfter)}
                         <span className="text-black/25 ml-1" style={{ fontSize: 8 }}>USDC</span>
+                      </td>
+                      <td className="px-5 py-3">
+                        {e.txSignature ? (
+                          <a
+                            href={`https://xray.helius.xyz/tx/${e.txSignature}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View on Helius Explorer"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '3px 8px',
+                              border: '1.5px solid #1A1A1A',
+                              borderRadius: 6,
+                              boxShadow: '1.5px 1.5px 0 #1A1A1A',
+                              background: '#FFFBEF',
+                              fontSize: 9,
+                              fontWeight: 700,
+                              fontFamily: 'Space Mono, monospace',
+                              textDecoration: 'none',
+                              color: '#7C3AED',
+                              letterSpacing: '0.05em',
+                              textTransform: 'uppercase',
+                            }}
+                            onMouseEnter={ev => { ev.currentTarget.style.background = '#FFD93D'; ev.currentTarget.style.color = '#1A1A1A'; }}
+                            onMouseLeave={ev => { ev.currentTarget.style.background = '#FFFBEF'; ev.currentTarget.style.color = '#7C3AED'; }}
+                          >
+                            <Search style={{ width: 10, height: 10 }} />
+                            Scan
+                          </a>
+                        ) : (
+                          <span className="text-black/20 font-mono" style={{ fontSize: 9 }}>—</span>
+                        )}
                       </td>
                     </tr>
                   ))

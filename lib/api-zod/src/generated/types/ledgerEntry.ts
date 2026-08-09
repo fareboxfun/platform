@@ -15,6 +15,8 @@ export interface LedgerEntry {
   description?: string | null;
   /** @nullable */
   refId?: string | null;
+  /** @nullable — on-chain Solana tx signature for topup entries */
+  txSignature?: string | null;
   balanceAfter: number;
   createdAt: Date;
 }

@@ -31,8 +31,9 @@ import NotFound from './pages/not-found';
 
 const queryClient = new QueryClient();
 
-// Solana mainnet RPC — Ankr public endpoint (higher rate limits, no API key needed)
-const SOLANA_RPC = 'https://rpc.ankr.com/solana';
+// Solana mainnet RPC — injected at build time from HELIUS_API_KEY env var
+declare const __SOLANA_RPC__: string;
+const SOLANA_RPC = __SOLANA_RPC__;
 
 /** Redirect stats.farebox.fun → /status automatically */
 function SubdomainGate() {

@@ -190,6 +190,7 @@ export const GetLedgerResponse = zod.object({
   "amountUsd": zod.number(),
   "description": zod.string().nullish(),
   "refId": zod.string().nullish(),
+  "txSignature": zod.string().nullish(),
   "balanceAfter": zod.number(),
   "createdAt": zod.coerce.date()
 })),

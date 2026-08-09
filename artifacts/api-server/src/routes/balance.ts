@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, count, desc } from "drizzle-orm";
-import { db, ledgerEntriesTable } from "@workspace/db";
+import { db, ledgerEntriesTable, paymentsTable } from "@workspace/db";
 import {
   GetBalanceResponse,
   GetLedgerQueryParams,
@@ -62,8 +62,18 @@ router.get("/balance/ledger", async (req, res): Promise<void> => {
   const offset = query.success ? (query.data.offset ?? 0) : 0;
 
   const entries = await db
-    .select()
+    .select({
+      id: ledgerEntriesTable.id,
+      type: ledgerEntriesTable.type,
+      amountUsd: ledgerEntriesTable.amountUsd,
+      description: ledgerEntriesTable.description,
+      refId: ledgerEntriesTable.refId,
+      balanceAfter: ledgerEntriesTable.balanceAfter,
+      createdAt: ledgerEntriesTable.createdAt,
+      txSignature: paymentsTable.txSignature,
+    })
     .from(ledgerEntriesTable)
+    .leftJoin(paymentsTable, eq(ledgerEntriesTable.refId, paymentsTable.id))
     .where(eq(ledgerEntriesTable.userId, userId))
     .orderBy(desc(ledgerEntriesTable.createdAt))
     .limit(limit)
@@ -84,6 +94,7 @@ router.get("/balance/ledger", async (req, res): Promise<void> => {
         amountUsd: parseFloat(e.amountUsd),
         description: e.description,
         refId: e.refId,
+        txSignature: e.txSignature ?? null,
         balanceAfter: parseFloat(e.balanceAfter),
         createdAt: e.createdAt.toISOString(),
       })),

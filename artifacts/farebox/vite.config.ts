@@ -52,6 +52,12 @@ export default defineConfig({
   define: {
     // Polyfill Node.js globals for @solana/web3.js in browser
     global: 'globalThis',
+    // Inject Helius RPC URL at build time (falls back to Ankr if key not set)
+    __SOLANA_RPC__: JSON.stringify(
+      process.env.HELIUS_API_KEY
+        ? `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`
+        : 'https://rpc.ankr.com/solana'
+    ),
   },
   resolve: {
     alias: {
