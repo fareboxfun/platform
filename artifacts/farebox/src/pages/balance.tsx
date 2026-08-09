@@ -528,7 +528,7 @@ export default function Balance() {
                       <td className="px-5 py-3">
                         {e.txSignature ? (
                           <a
-                            href={`https://xray.helius.xyz/tx/${e.txSignature}`}
+                            href={`https://orbmarkets.io/tx/${e.txSignature}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             title="View on Helius Explorer"
