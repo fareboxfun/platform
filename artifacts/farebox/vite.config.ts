@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
+import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
+
 const rawPort = process.env.PORT;
 
 if (!rawPort) {
@@ -30,12 +32,49 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    ...(process.env.NODE_ENV !== 'production' &&
+    process.env.REPL_ID !== undefined
+      ? [
+          runtimeErrorOverlay(),
+          await import('@replit/vite-plugin-cartographer').then((m) =>
+            m.cartographer({
+              root: path.resolve(import.meta.dirname, '..'),
+            }),
+          ),
+          await import('@replit/vite-plugin-dev-banner').then((m) =>
+            m.devBanner(),
+          ),
+        ]
+      : []),
   ],
+  define: {
+    // Polyfill Node.js globals for @solana/web3.js in browser
+    global: 'globalThis',
+  },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),
+      '@assets': path.resolve(
+        import.meta.dirname,
+        '..',
+        '..',
+        'attached_assets',
+      ),
+      // Polyfill Node's buffer module with browser-compatible version
+      buffer: 'buffer',
     },
     dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: [
+      'buffer',
+      '@solana/web3.js',
+      '@solana/wallet-adapter-react',
+      '@solana/wallet-adapter-base',
+    ],
+    esbuildOptions: {
+      define: { global: 'globalThis' },
+    },
   },
   root: path.resolve(import.meta.dirname),
   build: {

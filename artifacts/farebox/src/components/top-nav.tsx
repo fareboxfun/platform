@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Logo } from './logo';
 import { ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
-import { useWalletAuth as usePrivyAuth } from '../lib/wallet';
+import { useWalletAuth } from '../lib/wallet';
 
 const PRIMARY_LINKS = [
   { label: 'Home',      href: '/'          },
@@ -91,7 +91,7 @@ export function TopNav() {
     href === '/' ? location === '/' : location.startsWith(href.split('#')[0]);
 
   const moreActive = MORE_LINKS.some(l => isActive(l.href.split('#')[0]));
-  const { ready, authenticated, login, walletShort } = usePrivyAuth();
+  const { ready, authenticated, login, walletShort } = useWalletAuth();
 
   return (
     <>

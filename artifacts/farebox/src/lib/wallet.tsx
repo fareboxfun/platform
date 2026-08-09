@@ -271,5 +271,3 @@ export function useWalletAuth(): WalletAuthCtx {
   return ctx;
 }
 
-// Backward compat alias
-export { useWalletAuth as usePrivyAuth };

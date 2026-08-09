@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useGetBalance, useGetLedger, useCreateTopup, getGetBalanceQueryKey, getGetLedgerQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Copy, Check, ArrowUpRight, ArrowDownRight, Wallet, ExternalLink, RefreshCw } from 'lucide-react';
-import { useWalletAuth as usePrivyAuth } from '../lib/wallet';
+import { useWalletAuth } from '../lib/wallet';
 
 /* ── helpers ─────────────────────────────── */
 const USDC_PRESETS = [5, 20, 50, 100, 250, 500];
@@ -53,7 +53,7 @@ function CopyButton({ text }: { text: string }) {
 
 /* ── page ────────────────────────────────── */
 export default function Balance() {
-  const { walletAddress } = usePrivyAuth();
+  const { walletAddress } = useWalletAuth();
   const { data: balance, isLoading } = useGetBalance();
   const { data: ledger, isLoading: loadingLedger } = useGetLedger({ limit: 50 });
   const [amount, setAmount] = React.useState(20);

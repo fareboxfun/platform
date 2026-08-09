@@ -4,7 +4,7 @@ import { ArrowRight, ChevronRight, Twitter, Github, Send, BookOpen, Copy, Check 
 import { TopNav } from '../components/top-nav';
 import { Logo } from '../components/logo';
 import { Footer } from '../components/footer';
-import { useWalletAuth as usePrivyAuth } from '../lib/wallet';
+import { useWalletAuth } from '../lib/wallet';
 import { useQuery } from '@tanstack/react-query';
 
 /* ── platform metrics hook (public endpoint) ── */
@@ -429,7 +429,7 @@ function CodeSection() {
 
 /* ─── main component ───────────────────────────── */
 export default function Landing() {
-  const { ready, authenticated, login, walletShort } = usePrivyAuth();
+  const { ready, authenticated, login, walletShort } = useWalletAuth();
 
   return (
     <div

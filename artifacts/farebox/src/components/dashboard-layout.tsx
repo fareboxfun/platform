@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { useWalletAuth as usePrivyAuth } from '../lib/wallet';
+import { useWalletAuth } from '../lib/wallet';
 import { Logo } from './logo';
 
 const NAV = [
@@ -63,7 +63,7 @@ const CRUMBS: Record<string, string[]> = {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { ready, authenticated, login, logout, walletShort, walletAddress } = usePrivyAuth();
+  const { ready, authenticated, login, logout, walletShort, walletAddress } = useWalletAuth();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const crumbs = CRUMBS[location] ?? ['Console'];
