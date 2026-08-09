@@ -109,7 +109,7 @@ export function Footer() {
           style={{ borderTop: '1px solid #ffffff0c' }}
         >
           <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: '#374151' }}>
-            © 2026 Farebox. All rights reserved.
+            © {new Date().getFullYear()} Farebox. All rights reserved.
           </p>
           <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: '#374151' }}>
             Built on Solana · Powered by USDC · x402 native

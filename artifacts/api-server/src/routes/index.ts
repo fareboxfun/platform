@@ -16,6 +16,18 @@ import relayRouter    from "./relay";
 
 const router: IRouter = Router();
 
+// ── GET /api — root info endpoint (used by deployment healthcheck & clients) ──
+router.get("/", (_req, res): void => {
+  res.json({
+    name: "Farebox API",
+    version: "1.0.0",
+    status: "ok",
+    docs: "https://farebox.fun/docs",
+    gateway: "/v1/chat/completions",
+    models: "/v1/models",
+  });
+});
+
 router.use(healthRouter);
 router.use(authRouter);
 router.use(platformRouter);  // public — no requireAuth

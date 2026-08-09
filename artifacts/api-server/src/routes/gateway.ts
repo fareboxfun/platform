@@ -14,16 +14,20 @@ const router: IRouter = Router();
 // ─── GET /v1/models ──────────────────────────────────────────────────────────
 // Public — no API key required, returns OpenAI-compatible model list
 router.get("/models", async (_req, res): Promise<void> => {
-  const models = await db.select().from(modelsTable);
-  res.json({
-    object: "list",
-    data: models.map((m) => ({
-      id: m.id,
-      object: "model",
-      created: Math.floor(m.effectiveFrom.getTime() / 1000),
-      owned_by: m.provider,
-    })),
-  });
+  try {
+    const models = await db.select().from(modelsTable);
+    res.json({
+      object: "list",
+      data: models.map((m) => ({
+        id: m.id,
+        object: "model",
+        created: Math.floor(m.effectiveFrom.getTime() / 1000),
+        owned_by: m.provider,
+      })),
+    });
+  } catch {
+    res.status(503).json({ error: { message: "Model list temporarily unavailable", code: "service_unavailable" } });
+  }
 });
 
 // ─── POST /v1/chat/completions ───────────────────────────────────────────────

@@ -133,7 +133,7 @@ router.get("/status", async (_req, res): Promise<void> => {
   const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   const since1h  = new Date(Date.now() - 60 * 60 * 1000);
 
-  // Run all live checks in parallel
+  // Run all live checks in parallel — always works regardless of DB
   const liveResults = await Promise.all(
     SERVICES.map(async (svc) => {
       const { ok, latencyMs } = await svc.check();
@@ -144,69 +144,78 @@ router.get("/status", async (_req, res): Promise<void> => {
     })
   );
 
-  // Persist each check (skip if checked in last hour to avoid flood)
-  const recentIds = await db
-    .select({ serviceId: statusChecksTable.serviceId })
-    .from(statusChecksTable)
-    .where(gte(statusChecksTable.checkedAt, since1h));
+  // DB-backed history — wrapped so a DB failure degrades gracefully (no 500)
+  let historyByService: Record<string, { day: string; status: string }[]> = {};
+  let uptimeMap: Record<string, string> = {};
 
-  const recentSet = new Set(recentIds.map((r) => r.serviceId));
+  try {
+    // Persist each check (skip if checked in last hour to avoid flood)
+    const recentIds = await db
+      .select({ serviceId: statusChecksTable.serviceId })
+      .from(statusChecksTable)
+      .where(gte(statusChecksTable.checkedAt, since1h));
 
-  await Promise.all(
-    liveResults
-      .filter((r) => !recentSet.has(r.id))
-      .map((r) =>
-        db.insert(statusChecksTable).values({
-          serviceId: r.id,
-          status:    r.status,
-          latencyMs: r.latencyMs,
-        })
+    const recentSet = new Set(recentIds.map((r) => r.serviceId));
+
+    // Insert new checks — fire-and-forget individually so one failure doesn't block
+    await Promise.allSettled(
+      liveResults
+        .filter((r) => !recentSet.has(r.id))
+        .map((r) =>
+          db.insert(statusChecksTable).values({
+            serviceId: r.id,
+            status:    r.status,
+            latencyMs: r.latencyMs,
+          })
+        )
+    );
+
+    // Fetch 90-day daily history per service
+    const historyRows = await db
+      .select({
+        serviceId: statusChecksTable.serviceId,
+        day: sql<string>`date_trunc('day', ${statusChecksTable.checkedAt})::date::text`,
+        status: sql<string>`
+          CASE
+            WHEN bool_or(${statusChecksTable.status} = 'down')     THEN 'down'
+            WHEN bool_or(${statusChecksTable.status} = 'degraded') THEN 'degraded'
+            ELSE 'operational'
+          END
+        `,
+      })
+      .from(statusChecksTable)
+      .where(gte(statusChecksTable.checkedAt, since90))
+      .groupBy(
+        statusChecksTable.serviceId,
+        sql`date_trunc('day', ${statusChecksTable.checkedAt})::date`
       )
-  );
+      .orderBy(sql`date_trunc('day', ${statusChecksTable.checkedAt})::date asc`);
 
-  // Fetch 90-day daily history per service
-  const historyRows = await db
-    .select({
-      serviceId: statusChecksTable.serviceId,
-      day: sql<string>`date_trunc('day', ${statusChecksTable.checkedAt})::date::text`,
-      status: sql<string>`
-        CASE
-          WHEN bool_or(${statusChecksTable.status} = 'down')     THEN 'down'
-          WHEN bool_or(${statusChecksTable.status} = 'degraded') THEN 'degraded'
-          ELSE 'operational'
-        END
-      `,
-    })
-    .from(statusChecksTable)
-    .where(gte(statusChecksTable.checkedAt, since90))
-    .groupBy(
-      statusChecksTable.serviceId,
-      sql`date_trunc('day', ${statusChecksTable.checkedAt})::date`
-    )
-    .orderBy(sql`date_trunc('day', ${statusChecksTable.checkedAt})::date asc`);
+    // Compute uptime % per service
+    const uptimeRows = await db
+      .select({
+        serviceId: statusChecksTable.serviceId,
+        total:  sql<number>`count(*)::int`,
+        upDays: sql<number>`count(*) filter (where ${statusChecksTable.status} = 'operational')::int`,
+      })
+      .from(statusChecksTable)
+      .where(gte(statusChecksTable.checkedAt, since90))
+      .groupBy(statusChecksTable.serviceId);
 
-  // Compute uptime % per service (all-time based on records we have)
-  const uptimeRows = await db
-    .select({
-      serviceId: statusChecksTable.serviceId,
-      total:  sql<number>`count(*)::int`,
-      upDays: sql<number>`count(*) filter (where ${statusChecksTable.status} = 'operational')::int`,
-    })
-    .from(statusChecksTable)
-    .where(gte(statusChecksTable.checkedAt, since90))
-    .groupBy(statusChecksTable.serviceId);
+    uptimeMap = Object.fromEntries(
+      uptimeRows.map((r) => [
+        r.serviceId,
+        r.total > 0 ? ((r.upDays / r.total) * 100).toFixed(2) : "100.00",
+      ])
+    );
 
-  const uptimeMap = Object.fromEntries(
-    uptimeRows.map((r) => [
-      r.serviceId,
-      r.total > 0 ? ((r.upDays / r.total) * 100).toFixed(2) : "100.00",
-    ])
-  );
-
-  const historyByService: Record<string, { day: string; status: string }[]> = {};
-  for (const row of historyRows) {
-    if (!historyByService[row.serviceId]) historyByService[row.serviceId] = [];
-    historyByService[row.serviceId].push({ day: row.day, status: row.status });
+    for (const row of historyRows) {
+      if (!historyByService[row.serviceId]) historyByService[row.serviceId] = [];
+      historyByService[row.serviceId].push({ day: row.day, status: row.status });
+    }
+  } catch {
+    // DB unavailable — return live results only, no history
+    // This prevents a DB blip from taking down the public status page
   }
 
   const liveMap = Object.fromEntries(liveResults.map((r) => [r.id, r]));
