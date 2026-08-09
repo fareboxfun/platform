@@ -226,6 +226,7 @@ export default function Usage() {
                     No usage recorded yet
                   </span>
                 )
+            }
           </div>
         </div>
       </div>
